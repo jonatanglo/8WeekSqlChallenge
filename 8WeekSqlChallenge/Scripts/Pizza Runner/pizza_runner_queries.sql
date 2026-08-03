@@ -151,4 +151,9 @@ FROM customer_orders co
 GROUP BY "hour";
 
 -- A10. What was the volume of orders for each day of the week?
+SELECT 
+	EXTRACT(dow from order_time::timestamp)
+	,COUNT(*) AS number_of_orders
+FROM customer_orders
+GROUP BY EXTRACT(dow from order_time::timestamp);
 
