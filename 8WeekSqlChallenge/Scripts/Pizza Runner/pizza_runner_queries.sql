@@ -152,8 +152,41 @@ GROUP BY "hour";
 
 -- A10. What was the volume of orders for each day of the week?
 SELECT 
-	EXTRACT(dow from order_time::timestamp)
+	EXTRACT(dow from order_time::timestamp) AS weekday
 	,COUNT(*) AS number_of_orders
 FROM customer_orders
-GROUP BY EXTRACT(dow from order_time::timestamp);
+GROUP BY EXTRACT(dow from order_time::timestamp)
+ORDER BY weekday;
 
+-- B1. How many runners signed up for each 1 week period? (i.e. week starts 2021-01-01)
+
+SELECT 
+	TO_CHAR(registration_date, 'W')  AS week_no
+	,COUNT(*) AS signed_up_runners
+FROM runners
+GROUP BY week_no
+ORDER BY week_no ASC;
+
+-- B2. What was the average time in minutes it took for each runner to arrive at the Pizza Runner HQ to pickup the order?
+
+WITH orders AS (
+	SELECT 
+		 DISTINCT co.order_time 
+		,ro.runner_id AS runner
+		,co.order_id 
+		,ro.pickup_time 
+		,ro.pickup_time - co.order_time AS time
+	FROM runner_orders ro
+	LEFT JOIN customer_orders co 
+		ON ro.order_id = co.order_id
+	LEFT JOIN runners r 
+		ON ro.runner_id = r.runner_id 
+	WHERE ro.pickup_time IS NOT NULL
+	ORDER BY runner, co.order_time 
+)
+SELECT 
+	runner
+	,TO_CHAR(AVG(time), 'HH24:MI:SS')
+FROM orders
+GROUP BY runner 
+ORDER BY runner;
