@@ -39,6 +39,9 @@
 					"@dbeaver-show-non-default-db@": "false"
 				},
 				"auth-model": "native"
+			},
+			"custom-properties": {
+				"sql.format.keywordCase": "UPPER"
 			}
 		}
 	},

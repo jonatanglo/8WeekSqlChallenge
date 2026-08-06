@@ -190,3 +190,79 @@ SELECT
 FROM orders
 GROUP BY runner 
 ORDER BY runner;
+
+-- B3. Is there any relationship between the number of pizzas and how long the order takes to prepare?
+WITH sq AS (
+	SELECT 
+		DISTINCT co.order_time
+		,co.order_id
+		,ro.pickup_time 
+		,ro.pickup_time - co.order_time duration
+		,COUNT(*) OVER(PARTITION BY co.order_id) AS number_of_orders
+	FROM customer_orders co 
+	LEFT JOIN runner_orders ro 
+		ON co.order_id = ro.order_id
+	WHERE ro.pickup_time  IS NOT NULL
+	ORDER BY co.order_id
+)
+SELECT
+	number_of_orders
+	,TO_CHAR(AVG(duration), 'HH24:MI:SS') prep_time
+FROM sq
+GROUP BY number_of_orders
+ORDER BY number_of_orders
+
+-- B4. What was the average distance travelled for each customer?
+
+SELECT 
+	co.customer_id
+	,ROUND(AVG(ro.distance)::numeric, 2)
+FROM runner_orders ro
+LEFT JOIN customer_orders co 
+	ON ro.order_id = co.order_id 
+WHERE ro.pickup_time IS NOT NULL
+GROUP BY co.customer_id 
+ORDER BY co.customer_id 
+
+-- B5. What was the difference between the longest and shortest delivery times for all orders?
+
+SELECT MAX(ro.duration) - MIN(ro.duration)
+FROM runner_orders ro 
+WHERE ro.cancellation IS NULL
+
+-- B6.What was the average speed for each runner for each delivery and do you notice any trend for these values?
+
+SELECT 
+	ro.runner_id
+	,ro.order_id 
+	,ROUND((ro.distance / ro.duration * 60)::numeric, 2) avg_speed
+FROM runner_orders ro 
+WHERE ro.cancellation IS NULL
+ORDER BY avg_speed DESC
+
+-- B7. What is the successful delivery percentage for each runner?
+WITH successful_deliveries AS (
+	SELECT 
+		ro.runner_id 
+		,SUM(CASE 
+			WHEN ro.cancellation IS NULL THEN 1
+			ELSE 0
+		END)  successful_deliveries
+		--,COUNT(*) sucessful_deliveries
+	FROM runner_orders ro 
+	GROUP BY ro.runner_id
+	ORDER BY ro.runner_id 
+	)
+SELECT 
+	ro.runner_id 
+	,MAX(sd.successful_deliveries)::numeric / COUNT(*)::numeric * 100 all_orders
+	--,SUM(sd.successful_deliveries )
+FROM runner_orders ro 
+JOIN successful_deliveries sd
+	ON ro.runner_id = sd.runner_id 
+GROUP BY ro.runner_id 
+ORDER BY ro.runner_id 
+
+
+
+
