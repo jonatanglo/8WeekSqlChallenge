@@ -76,6 +76,44 @@ UPDATE runner_orders
 SET cancellation = NULL 
 WHERE cancellation = 'null' OR cancellation = '';
 
+--Naprawa pizza recipes
+DROP TABLE IF EXISTS pizza_recipes_old;
+ALTER TABLE pizza_recipes RENAME TO pizza_recipes_old;
+CREATE TABLE pizza_recipes AS
+	SELECT
+		pizza_id
+		,TRIM(UNNEST(regexp_split_to_array(toppings, ','))) toppings --https://medium.com/@suhasthakral/split-strings-lists-into-rows-in-postgres-82bfa5dbef53
+	FROM pizza_recipes_old;
+DROP TABLE pizza_recipes_old;
+ALTER TABLE pizza_recipes ALTER COLUMN toppings TYPE integer USING (toppings::integer); --https://stackoverflow.com/questions/26439033/change-column-datatype-from-text-to-integer-in-postgresql
+
+--Stworzenie nowej tabeli przechowującej nazwę typu zmiany w zamówieniu i wypełnienie jej wartościami
+CREATE TABLE change_type (change_type_id integer, change_name varchar(50));
+INSERT INTO change_type (change_type_id, change_name) 
+	VALUES (1, 'exclusions') ,(2, 'extras');
+
+--Stworzenie nowej tabeli przechowującej tabelę wszystkich zmian w zamówieniach i wypełnienie jej wartościami na postawie customer_orders
+CREATE TABLE change_orders (change_id integer GENERATED ALWAYS AS IDENTITY, customer_order_id integer, change_type_id integer, topping_id integer);
+
+--Wypełnienie tabeli wartościami z wykluczeniami (exclusions) z zamówien
+INSERT INTO change_orders (customer_order_id, change_type_id, topping_id)
+	SELECT
+		order_id
+		, 1 
+		, TRIM(UNNEST(regexp_split_to_array(exclusions, ',')))::integer
+	FROM customer_orders
+	WHERE exclusions IS NOT NULL;
+
+--Wypełnienie tabeli wartościami z dodatkami (extras) do zamówien
+INSERT INTO change_orders (customer_order_id, change_type_id, topping_id)
+	SELECT
+		order_id
+		, 2
+		, TRIM(UNNEST(regexp_split_to_array(extras, ',')))::integer
+	FROM customer_orders
+	WHERE extras IS NOT NULL;
+
+
 -- A1. How many pizzas were ordered?
 SELECT COUNT(DISTINCT order_id)
 FROM customer_orders;
@@ -248,21 +286,69 @@ WITH successful_deliveries AS (
 			WHEN ro.cancellation IS NULL THEN 1
 			ELSE 0
 		END)  successful_deliveries
-		--,COUNT(*) sucessful_deliveries
 	FROM runner_orders ro 
 	GROUP BY ro.runner_id
 	ORDER BY ro.runner_id 
 	)
 SELECT 
 	ro.runner_id 
-	,MAX(sd.successful_deliveries)::numeric / COUNT(*)::numeric * 100 all_orders
-	--,SUM(sd.successful_deliveries )
+	,MAX(sd.successful_deliveries)::numeric / COUNT(*)::numeric * 100 successful_delivery_percentage
 FROM runner_orders ro 
 JOIN successful_deliveries sd
 	ON ro.runner_id = sd.runner_id 
 GROUP BY ro.runner_id 
 ORDER BY ro.runner_id 
 
+-- C1. What are the standard ingredients for each pizza?
 
+SELECT 
+	pn.pizza_name
+	, STRING_AGG(pt.topping_name , ', ') --https://neon.com/postgresql/aggregate-functions/string_agg-function
+FROM pizza_names pn
+LEFT JOIN pizza_recipes pr 
+	ON pn.pizza_id = pr.pizza_id 
+LEFT JOIN pizza_toppings pt 
+	ON pr.toppings = pt.topping_id 
+GROUP BY pn.pizza_name 
 
+-- C2. What was the most commonly added extra?
 
+SELECT 
+	pt.topping_name 
+	, COUNT(*) added_extras
+FROM change_orders cho
+INNER JOIN change_type ct
+	ON cho.change_type_id = ct.change_type_id 
+INNER JOIN pizza_toppings pt 
+	ON cho.topping_id = pt.topping_id 
+WHERE ct.change_name = 'extras'
+GROUP BY pt.topping_name
+ORDER BY added_extras DESC
+LIMIT 1;
+ 
+-- C3. What was the most common exclusion?
+
+SELECT 
+	pt.topping_name 
+	, COUNT(*) exlusions
+FROM change_orders cho
+INNER JOIN change_type ct
+	ON cho.change_type_id = ct.change_type_id 
+INNER JOIN pizza_toppings pt 
+	ON cho.topping_id = pt.topping_id 
+WHERE ct.change_name = 'exclusions'
+GROUP BY pt.topping_name
+ORDER BY exlusions DESC
+LIMIT 1;
+
+-- C4. Generate an order item for each record in the customers_orders table in the format of one of the following:
+--Meat Lovers
+--Meat Lovers - Exclude Beef
+--Meat Lovers - Extra Bacon
+--Meat Lovers - Exclude Cheese, Bacon - Extra Mushroom, Peppers
+SELECT * FROM pizza_names;
+SELECT * FROM pizza_recipes;
+SELECT * FROM pizza_toppings;
+SELECT * FROM customer_orders;
+SELECT * FROM change_type;
+SELECT * FROM change_orders;
