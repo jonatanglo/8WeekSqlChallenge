@@ -20,6 +20,29 @@
 				},
 				"auth-model": "native"
 			}
+		},
+		"postgres-jdbc-19fc8bad9fa-77c3a973598ee75f": {
+			"provider": "postgresql",
+			"driver": "postgres-jdbc",
+			"name": "8WeekSqlChallengeDB",
+			"save-password": true,
+			"configuration": {
+				"host": "localhost",
+				"port": "5432",
+				"database": "8WeekSqlChallengeDB",
+				"url": "jdbc:postgresql://localhost:5432/8WeekSqlChallengeDB",
+				"configurationType": "MANUAL",
+				"home": "/Library/PostgreSQL/18",
+				"type": "dev",
+				"closeIdleConnection": true,
+				"provider-properties": {
+					"@dbeaver-show-non-default-db@": "false"
+				},
+				"auth-model": "native"
+			},
+			"custom-properties": {
+				"sql.format.keywordCase": "UPPER"
+			}
 		}
 	},
 	"connection-types": {

@@ -349,7 +349,48 @@ LIMIT 1;
 SELECT * FROM pizza_names;
 SELECT * FROM pizza_recipes;
 SELECT * FROM pizza_toppings;
-SELECT * FROM customer_orders;
+SELECT * FROM customer_orders ORDER BY order_id;
 SELECT * FROM change_type;
-SELECT * FROM change_orders;
+SELECT * FROM change_orders ORDER BY change_orders.customer_order_id ;
+
+
+--zamówienia bez zmian
+SELECT 
+	co.order_id
+	, co.customer_id
+	, pn.pizza_name 
+	, co.order_time
+FROM customer_orders co
+JOIN pizza_names pn
+	ON co.pizza_id = pn.pizza_id 
+WHERE co.exclusions IS NULL AND co.extras IS NULL
+ORDER BY co.order_time;
+
+--zamowienia ze zmianami exlusions
+SELECT 
+	co2.order_id 
+	,co.customer_order_id 
+	,co.change_type_id 
+FROM change_orders co 
+JOIN customer_orders co2 
+	ON co.customer_order_id = co2.order_id 
+
+
+SELECT 
+	DISTINCT co.order_id
+	, co.pizza_id 
+	, pn.pizza_name
+	, co.exclusions 
+	, co.extras 
+	, co2.change_type_id 
+	, ct.change_name 
+	, co.order_time
+FROM customer_orders co
+LEFT JOIN pizza_names pn
+	ON co.pizza_id = pn.pizza_id
+LEFT JOIN change_orders co2 
+	ON co.order_id = co2.customer_order_id 
+LEFT JOIN change_type ct 
+	ON co2.change_type_id  = ct.change_type_id 
+ORDER BY co.order_time; 
 

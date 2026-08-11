@@ -42,6 +42,12 @@
 			},
 			"custom-properties": {
 				"sql.format.keywordCase": "UPPER"
+			},
+			"extensions": {
+				"ai.assistant": {
+					"confirmed": true,
+					"mcpEnabled": false
+				}
 			}
 		}
 	},
