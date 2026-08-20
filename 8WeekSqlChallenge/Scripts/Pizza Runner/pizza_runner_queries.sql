@@ -10,6 +10,7 @@ SELECT * FROM pizza_recipes;
 
 SELECT * FROM pizza_toppings;
 
+
 --Naprawa customer_orders.exclusions
 UPDATE customer_orders 
 SET exclusions = NULL
@@ -118,9 +119,19 @@ INSERT INTO change_orders (customer_order_id, change_type_id, topping_id)
 SELECT COUNT(DISTINCT order_id)
 FROM customer_orders;
 
+|count|
+|-----|
+|10   |
+
+
 -- A2. How many unique customer orders were made?
 SELECT COUNT(DISTINCT customer_id)
 FROM customer_orders;
+
+|count|
+|-----|
+|5    |
+
 
 -- A3. How many successful orders were delivered by each runner?
 SELECT runner_id, COUNT(runner_id)
@@ -128,6 +139,13 @@ FROM runner_orders
 WHERE cancellation IS NULL
 GROUP BY runner_id
 ORDER BY runner_id;
+
+|runner_id|count|
+|---------|-----|
+|1        |4    |
+|2        |3    |
+|3        |1    |
+
 
 -- A4. How many of each type of pizza was delivered?
 SELECT pn.pizza_name, COUNT(pn.pizza_name)
@@ -139,6 +157,12 @@ LEFT JOIN runner_orders ro
 WHERE ro.cancellation IS NULL
 GROUP BY pn.pizza_name;
 
+|pizza_name|count|
+|----------|-----|
+|Meatlovers|9    |
+|Vegetarian|3    |
+
+
 -- A5. How many Vegetarian and Meatlovers were ordered by each customer?
 SELECT co.customer_id, pn.pizza_name, COUNT(co.customer_id)
 FROM customer_orders co 
@@ -146,6 +170,18 @@ LEFT JOIN pizza_names pn
 	ON co.pizza_id = pn.pizza_id 
 GROUP BY co.customer_id, pn.pizza_name
 ORDER BY co.customer_id;
+
+|customer_id|pizza_name|count|
+|-----------|----------|-----|
+|101        |Meatlovers|2    |
+|101        |Vegetarian|1    |
+|102        |Meatlovers|2    |
+|102        |Vegetarian|1    |
+|103        |Meatlovers|3    |
+|103        |Vegetarian|1    |
+|104        |Meatlovers|3    |
+|105        |Vegetarian|1    |
+
 
 -- A6. What was the maximum number of pizzas delivered in a single order?
 SELECT co.order_id, COUNT(co.order_id) max
@@ -156,6 +192,11 @@ WHERE ro.cancellation IS NULL
 GROUP BY co.order_id 
 ORDER BY max DESC
 LIMIT 1;
+
+|order_id|max|
+|--------|---|
+|4       |3  |
+
 
 -- A7. For each customer, how many delivered pizzas had at least 1 change and how many had no changes?
 SELECT 
@@ -170,6 +211,15 @@ LEFT JOIN runner_orders ro
 WHERE ro.cancellation IS NULL
 GROUP BY co.customer_id;
 
+|customer_id|has_changes|
+|-----------|-----------|
+|101        |0          |
+|103        |3          |
+|104        |2          |
+|105        |1          |
+|102        |0          |
+
+
 -- A8. How many pizzas were delivered that had both exclusions and extras?
 SELECT 
 	SUM(CASE
@@ -181,12 +231,27 @@ LEFT JOIN runner_orders ro
 	ON co.order_id = ro.order_id 
 WHERE ro.cancellation IS NULL;
 
+|both_changes|
+|------------|
+|1           |
+
+
 -- A9. What was the total volume of pizzas ordered for each hour of the day?
 SELECT 
 	EXTRACT(HOUR FROM co.order_time) "hour"
 	, COUNT(co.pizza_id)
 FROM customer_orders co 
 GROUP BY "hour";
+
+|hour|count|
+|----|-----|
+|18  |3    |
+|21  |3    |
+|23  |3    |
+|13  |3    |
+|19  |1    |
+|11  |1    |
+
 
 -- A10. What was the volume of orders for each day of the week?
 SELECT 
@@ -196,8 +261,15 @@ FROM customer_orders
 GROUP BY EXTRACT(dow from order_time::timestamp)
 ORDER BY weekday;
 
--- B1. How many runners signed up for each 1 week period? (i.e. week starts 2021-01-01)
+|weekday|number_of_orders|
+|-------|----------------|
+|3      |5               |
+|4      |3               |
+|5      |1               |
+|6      |5               |
 
+
+-- B1. How many runners signed up for each 1 week period? (i.e. week starts 2021-01-01)
 SELECT 
 	TO_CHAR(registration_date, 'W')  AS week_no
 	,COUNT(*) AS signed_up_runners
@@ -205,8 +277,14 @@ FROM runners
 GROUP BY week_no
 ORDER BY week_no ASC;
 
--- B2. What was the average time in minutes it took for each runner to arrive at the Pizza Runner HQ to pickup the order?
+|week_no|signed_up_runners|
+|-------|-----------------|
+|1      |2                |
+|2      |1                |
+|3      |1                |
 
+
+-- B2. What was the average time in minutes it took for each runner to arrive at the Pizza Runner HQ to pickup the order?
 WITH orders AS (
 	SELECT 
 		 DISTINCT co.order_time 
@@ -229,6 +307,13 @@ FROM orders
 GROUP BY runner 
 ORDER BY runner;
 
+|runner|to_char |
+|------|--------|
+|1     |00:14:19|
+|2     |00:20:00|
+|3     |00:10:28|
+
+
 -- B3. Is there any relationship between the number of pizzas and how long the order takes to prepare?
 WITH sq AS (
 	SELECT 
@@ -248,10 +333,16 @@ SELECT
 	,TO_CHAR(AVG(duration), 'HH24:MI:SS') prep_time
 FROM sq
 GROUP BY number_of_orders
-ORDER BY number_of_orders
+ORDER BY number_of_orders;
+
+|number_of_orders|prep_time|
+|----------------|---------|
+|1               |00:12:21 |
+|2               |00:18:22 |
+|3               |00:29:17 |
+
 
 -- B4. What was the average distance travelled for each customer?
-
 SELECT 
 	co.customer_id
 	,ROUND(AVG(ro.distance)::numeric, 2)
@@ -260,23 +351,47 @@ LEFT JOIN customer_orders co
 	ON ro.order_id = co.order_id 
 WHERE ro.pickup_time IS NOT NULL
 GROUP BY co.customer_id 
-ORDER BY co.customer_id 
+ORDER BY co.customer_id;
+
+|customer_id|round|
+|-----------|-----|
+|101        |20   |
+|102        |16.73|
+|103        |23.4 |
+|104        |10   |
+|105        |25   |
+
 
 -- B5. What was the difference between the longest and shortest delivery times for all orders?
-
-SELECT MAX(ro.duration) - MIN(ro.duration)
+SELECT MAX(ro.duration) - MIN(ro.duration) difference
 FROM runner_orders ro 
-WHERE ro.cancellation IS NULL
+WHERE ro.cancellation IS NULL;
+
+|difference|
+|----------|
+|30        |
+
 
 -- B6.What was the average speed for each runner for each delivery and do you notice any trend for these values?
-
 SELECT 
 	ro.runner_id
 	,ro.order_id 
 	,ROUND((ro.distance / ro.duration * 60)::numeric, 2) avg_speed
 FROM runner_orders ro 
 WHERE ro.cancellation IS NULL
-ORDER BY avg_speed DESC
+ORDER BY avg_speed DESC;
+
+|runner_id|order_id|avg_speed|
+|---------|--------|---------|
+|2        |8       |93.6     |
+|2        |7       |60       |
+|1        |10      |60       |
+|1        |2       |44.44    |
+|1        |3       |40.2     |
+|3        |5       |40       |
+|1        |1       |37.5     |
+|2        |4       |35.1     |
+
 
 -- B7. What is the successful delivery percentage for each runner?
 WITH successful_deliveries AS (
@@ -297,10 +412,16 @@ FROM runner_orders ro
 JOIN successful_deliveries sd
 	ON ro.runner_id = sd.runner_id 
 GROUP BY ro.runner_id 
-ORDER BY ro.runner_id 
+ORDER BY ro.runner_id;
+
+|runner_id|successful_delivery_percentage|
+|---------|------------------------------|
+|1        |100                           |
+|2        |75                            |
+|3        |50                            |
+
 
 -- C1. What are the standard ingredients for each pizza?
-
 SELECT 
 	pn.pizza_name
 	, STRING_AGG(pt.topping_name , ', ') --https://neon.com/postgresql/aggregate-functions/string_agg-function
@@ -309,10 +430,15 @@ LEFT JOIN pizza_recipes pr
 	ON pn.pizza_id = pr.pizza_id 
 LEFT JOIN pizza_toppings pt 
 	ON pr.toppings = pt.topping_id 
-GROUP BY pn.pizza_name 
+GROUP BY pn.pizza_name;
+
+|pizza_name|string_agg                                                           |
+|----------|---------------------------------------------------------------------|
+|Meatlovers|Bacon, BBQ Sauce, Beef, Cheese, Chicken, Mushrooms, Pepperoni, Salami|
+|Vegetarian|Cheese, Mushrooms, Onions, Peppers, Tomatoes, Tomato Sauce           |
+
 
 -- C2. What was the most commonly added extra?
-
 SELECT 
 	pt.topping_name 
 	, COUNT(*) added_extras
@@ -325,9 +451,13 @@ WHERE ct.change_name = 'extras'
 GROUP BY pt.topping_name
 ORDER BY added_extras DESC
 LIMIT 1;
+
+|topping_name|added_extras|
+|------------|------------|
+|Bacon       |4           |
+
  
 -- C3. What was the most common exclusion?
-
 SELECT 
 	pt.topping_name 
 	, COUNT(*) exlusions
@@ -340,6 +470,11 @@ WHERE ct.change_name = 'exclusions'
 GROUP BY pt.topping_name
 ORDER BY exlusions DESC
 LIMIT 1;
+
+|topping_name|exlusions|
+|------------|---------|
+|Cheese      |4        |
+
 
 -- C4. Generate an order item for each record in the customers_orders table in the format of one of the following:
 --Meat Lovers
